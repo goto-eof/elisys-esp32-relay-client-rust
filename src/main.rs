@@ -1,4 +1,6 @@
-use crate::configuration::configuration::{CONFIG_URI, WIFI_PASS, WIFI_SSID};
+use crate::configuration::configuration::{
+    CONFIG_CHECK_INTERVAL_SECONDS, CONFIG_URI, WIFI_PASS, WIFI_SSID,
+};
 use crate::dto::configuration_dto::ConfigurationRequestDTO;
 use anyhow::{self, Error};
 use dto::configuration_dto::ConfigurationResponseDTO;
@@ -58,7 +60,7 @@ fn main() -> anyhow::Result<()> {
         } else {
             error!("error: {:?}", configuration_result.err());
         }
-        FreeRtos::delay_ms(1000);
+        FreeRtos::delay_ms(CONFIG_CHECK_INTERVAL_SECONDS * 1000);
     }
 }
 
