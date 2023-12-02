@@ -1,4 +1,4 @@
-# ESP32 Relay Client (Rust)
+# Elisys ESP32 Relay Client (Rust)
 
 This application, developed in Rust programming language, allows to control remotely a relay controlled by an ESP32 device kit. Please check the `Configuration` section to build the project.
 
