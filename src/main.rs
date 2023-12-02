@@ -103,7 +103,7 @@ fn connect_wifi<'a>(
     while !wifi_driver.is_connected()? {
         let config = wifi_driver.get_configuration()?;
         warn!("wifi: waiting for connection establishment: {:?}", config);
-        FreeRtos::delay_ms(20);
+        FreeRtos::delay_ms(1000);
     }
     info!("wifi: connected!");
     return Ok(wifi_driver);
