@@ -19,6 +19,7 @@ pub mod configuration;
 pub mod dto;
 fn main() -> anyhow::Result<()> {
     esp_idf_sys::link_patches();
+    esp_idf_svc::log::EspLogger::initialize_default();
 
     let peripherals = Peripherals::take().unwrap();
     let mut relay = PinDriver::input_output(peripherals.pins.gpio15)?;
@@ -27,11 +28,16 @@ fn main() -> anyhow::Result<()> {
     let nvs = EspDefaultNvsPartition::take().unwrap();
 
     let mut wifi_driver = EspWifi::new(peripherals.modem, sys_loop, Some(nvs)).unwrap();
-    let mac_address = get_mac_address(&mut wifi_driver);
     loop {
+        info!("trying to connect to the wifi network....");
         connect_reconnect_wifi(&mut wifi_driver);
+        info!("connection done");
+        let mac_address = get_mac_address(&mut wifi_driver);
+        info!("mac address: {}", mac_address);
 
+        info!("trying to retrieve configuration...");
         let configuration_result = retrieve_configuration(CONFIG_URI, &mac_address);
+        info!("done");
 
         if configuration_result.is_ok() {
             let configuration = configuration_result.unwrap();
@@ -49,13 +55,9 @@ fn main() -> anyhow::Result<()> {
                     info!("device deactivated");
                 }
             }
+        } else {
+            error!("error: {:?}", configuration_result.err());
         }
-
-        println!(
-            "IP info: {:?}",
-            wifi_driver.sta_netif().get_ip_info().unwrap()
-        );
-        FreeRtos::delay_ms(1000);
         FreeRtos::delay_ms(1000);
     }
 }
@@ -69,34 +71,39 @@ pub fn get_mac_address(wifi: &mut EspWifi<'static>) -> String {
 }
 
 fn connect_reconnect_wifi(wifi_driver: &mut EspWifi<'static>) {
-    while connect_wifi(wifi_driver).is_err() {
-        FreeRtos::delay_ms(500);
+    while wifi_driver.is_connected().is_err() || !wifi_driver.is_connected().unwrap() {
+        info!("trying to connect to wifi....");
+        if connect_wifi(wifi_driver).is_err() {
+            FreeRtos::delay_ms(500);
+            info!("retrying wifi");
+        } else {
+            info!("connected to wifi :)");
+            break;
+        }
     }
 }
 
 fn connect_wifi<'a>(
     wifi_driver: &'a mut EspWifi<'static>,
 ) -> Result<&'a mut EspWifi<'static>, EspError> {
-    if wifi_driver.is_connected().is_err() {
-        info!("wifi: setting configuration...");
-        wifi_driver.set_configuration(&WifiConfiguration::Client(ClientConfiguration {
-            ssid: WIFI_SSID.into(),
-            password: WIFI_PASS.into(),
-            ..Default::default()
-        }))?;
-        info!("wifi: starting device...");
-        wifi_driver.start()?;
-        info!("wifi: connecting...");
-        wifi_driver.connect()?;
-        info!("wifi: connected: {:?}", wifi_driver.is_connected());
+    info!("wifi: setting configuration...");
+    wifi_driver.set_configuration(&WifiConfiguration::Client(ClientConfiguration {
+        ssid: WIFI_SSID.into(),
+        password: WIFI_PASS.into(),
+        ..Default::default()
+    }))?;
+    info!("wifi: starting device...");
+    wifi_driver.start()?;
+    info!("wifi: connecting...");
+    wifi_driver.connect()?;
+    info!("wifi: connected: {:?}", wifi_driver.is_connected());
 
-        while !wifi_driver.is_connected()? {
-            let config = wifi_driver.get_configuration()?;
-            warn!("wifi: waiting for connection establishment: {:?}", config);
-            FreeRtos::delay_ms(20);
-        }
-        info!("wifi: connected!");
+    while !wifi_driver.is_connected()? {
+        let config = wifi_driver.get_configuration()?;
+        warn!("wifi: waiting for connection establishment: {:?}", config);
+        FreeRtos::delay_ms(20);
     }
+    info!("wifi: connected!");
     return Ok(wifi_driver);
 }
 
@@ -104,13 +111,14 @@ pub fn retrieve_configuration(
     configuration_uri: &str,
     mac_address: &str,
 ) -> anyhow::Result<ConfigurationResponseDTO, anyhow::Error> {
+    info!("connecting to: {}", configuration_uri);
     let client = HttpClient::wrap(EspHttpConnection::new(&Default::default())?);
     let payload = serde_json::to_string(&ConfigurationRequestDTO::new(mac_address.into())).unwrap();
     let payload = payload.as_bytes();
 
-    info!("trying to send is alive ack...");
+    info!("trying retrieve configuration...");
     let result = post_request(payload, client, configuration_uri);
-    info!("ack sent? {}", !result.is_err());
+    info!("configuration retrieved? {}", !result.is_err());
     match result {
         StandardOk(body_string) => {
             let configuration: Result<ConfigurationResponseDTO, serde_json::Error> =
