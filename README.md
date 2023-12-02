@@ -19,5 +19,3 @@ cargo run
 # Photo
 
 ![relay rust](/images/esp32-relay-client-rust.jpg)
-
-note: not yet tested on an ESP32 device (need to implement some server logic).
