@@ -19,3 +19,5 @@ cargo run
 # Photo
 
 ![relay rust](/images/esp32-relay-client-rust.jpg)
+
+Tested on ESP32-DevKitC and developed on Ubuntu.
