@@ -1,6 +1,6 @@
 # Elisys ESP32 Relay Client (Rust)
 
-This application, developed in Rust programming language, allows to control remotely a relay controlled by an ESP32 device kit. The application will communicate with [Elisys Home Automation (Java)](https://github.com/goto-eof/elisys-home-automation-server-java) to retrieve the configuration and activate or deactivate the relay. Please check the `Configuration` section to build the project.
+This application, developed in Rust programming language, allows to control remotely a relay controlled by an ESP32 device kit. The application will communicate with [**Elisys Home Automation (Java)**](https://github.com/goto-eof/elisys-home-automation-server-java) to retrieve the configuration and activate or deactivate the relay. Please check the `Configuration` section to build the project.
 
 # How it works?
 
