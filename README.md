@@ -4,7 +4,7 @@ This application, developed in Rust programming language, allows to control remo
 
 # How it works?
 
-The application tries to connect to the WiFi, if the connection fails, then it will retry until it succeeds. After a connection is established, the application downloads the configuration from a remote server. The configuration contains information about the status that should have the device: on or off. So that the relay is disabled or enabled in base of the configuration JSON received by the remote server.
+The application tries to connect to the WiFi, if the connection fails, then it will retry until it succeeds. After a connection is established, the application downloads the configuration from a remote server. The configuration contains information about the status that should have the device: on or off. So that the relay is disabled or enabled in base of the configuration JSON received by the remote server. The ESP32 applciation will check every 3 seconds for new configuration.
 
 # Configuration
 
