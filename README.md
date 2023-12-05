@@ -6,6 +6,10 @@ This application, developed in Rust programming language, allows to control remo
 
 The application tries to connect to the WiFi, if the connection fails, then it will retry until it succeeds. After a connection is established, the application downloads the configuration from a remote server. The configuration contains information about the status that should have the device: on or off. So that the relay is disabled or enabled in base of the configuration JSON received by the remote server. The ESP32 application will check every 3 seconds for new configuration.
 
+|GPIO|Description|
+|-|-|
+|15|relay pin|
+
 # Configuration
 
 Before you proceed with building the project, you need to rename the `/src/configuration/configuration-sample.rs` to `/src/configuration/configuration.rs`. Then you shall edit the variables in the `configuration.rs` file (WiFi SSID, WiFi Password and Configuration Server Endpoint)
