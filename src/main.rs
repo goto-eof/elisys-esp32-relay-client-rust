@@ -1,7 +1,9 @@
 use crate::configuration::configuration::{
-    CONFIG_CHECK_INTERVAL_SECONDS, CONFIG_URI, WIFI_PASS, WIFI_SSID,
+    CONFIG_CHECK_INTERVAL_SECONDS, CONFIG_URI, DEVICE_DESCRIPTION, DEVICE_NAME, DEVICE_TYPE,
+    REGISTER_DEVICE_URL, WIFI_PASS, WIFI_SSID,
 };
 use crate::dto::configuration_dto::ConfigurationRequestDTO;
+use crate::dto::register_device::RegisterDeviceDTO;
 use anyhow::{self, Error};
 use dto::configuration_dto::ConfigurationResponseDTO;
 use embedded_svc::{http::client::Client as HttpClient, io::Write, utils::io};
@@ -30,13 +32,25 @@ fn main() -> anyhow::Result<()> {
     let nvs = EspDefaultNvsPartition::take().unwrap();
 
     let mut wifi_driver = EspWifi::new(peripherals.modem, sys_loop, Some(nvs)).unwrap();
+    info!("trying to connect to the wifi network....");
+    connect_reconnect_wifi_if_necessary(&mut wifi_driver);
+    info!("connection done");
+    let mac_address = get_mac_address(&mut wifi_driver);
+    info!("mac address: {}", mac_address);
+    FreeRtos::delay_ms(2000);
+    let register_device_result = register_device(&mac_address);
+    if register_device_result.is_err() {
+        error!(
+            "Failed to register the device: {:?}",
+            register_device_result
+        );
+    } else {
+        info!("Device registered successfully!");
+    }
     loop {
-        info!("trying to connect to the wifi network....");
-        connect_reconnect_wifi(&mut wifi_driver);
+        info!("trying to connect to the wifi network if necessary....");
+        connect_reconnect_wifi_if_necessary(&mut wifi_driver);
         info!("connection done");
-        let mac_address = get_mac_address(&mut wifi_driver);
-        info!("mac address: {}", mac_address);
-
         info!("trying to retrieve configuration...");
         let configuration_result = retrieve_configuration(CONFIG_URI, &mac_address);
         info!("done");
@@ -72,7 +86,7 @@ pub fn get_mac_address(wifi: &mut EspWifi<'static>) -> String {
     mac_address_value
 }
 
-fn connect_reconnect_wifi(wifi_driver: &mut EspWifi<'static>) {
+fn connect_reconnect_wifi_if_necessary(wifi_driver: &mut EspWifi<'static>) {
     while wifi_driver.is_connected().is_err() || !wifi_driver.is_connected().unwrap() {
         info!("trying to connect to wifi....");
         if connect_wifi(wifi_driver).is_err() {
@@ -208,4 +222,25 @@ fn post_request(
             StandardOk(str) => Ok(str.to_owned()),
         };
     }
+}
+
+pub fn register_device(mac_address: &str) -> anyhow::Result<(), anyhow::Error> {
+    let client = HttpClient::wrap(EspHttpConnection::new(&Default::default())?);
+
+    let payload = serde_json::to_string(&RegisterDeviceDTO::new(
+        mac_address.to_owned(),
+        DEVICE_TYPE.into(),
+        DEVICE_NAME.into(),
+        DEVICE_DESCRIPTION.into(),
+    ))
+    .unwrap();
+    let payload = payload.as_bytes();
+
+    info!("trying to send data...");
+    let result = post_request(payload, client, REGISTER_DEVICE_URL);
+    info!("data sent? {}", !result.is_err());
+    return match result {
+        Err(e) => Err(e.into()),
+        StandardOk(_) => Ok(()),
+    };
 }
